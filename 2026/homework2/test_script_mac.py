@@ -3,6 +3,7 @@ import sys
 import re
 import os
 import statistics
+import platform
 
 TEST_CASES = [
     {"name": "Small (100k ints)",     "N": 100000,     "threads": 4, "seed": 99},
@@ -14,9 +15,39 @@ TEST_CASES = [
 
 NUM_ATTEMPTS=5
 
+
+def get_m3_compile_cmd(cpp_file, exec_file):
+    """
+    Constructs the clang++ command for Apple Silicon Macs using Homebrew libomp.
+    """
+    print("[*] Detecting Apple Silicon OpenMP installation...")
+    try:
+        omp_prefix = subprocess.check_output(["brew", "--prefix", "libomp"], text=True).strip()
+    except FileNotFoundError:
+        print("\n[\033[91mFAIL\033[0m] 'brew' command not found.")
+        print("    You must install Homebrew first: https://brew.sh/")
+        sys.exit(1)
+    except subprocess.CalledProcessError:
+        print("\n[\033[91mFAIL\033[0m] OpenMP library not found on your Mac.")
+        print("    Please run: \033[96mbrew install libomp\033[0m\n")
+        sys.exit(1)
+
+    print(f"[*] Found libomp at: {omp_prefix}")
+    return [
+        "clang++", "-O3", "-std=c++17",
+        "-Xpreprocessor", "-fopenmp",
+        f"-I{omp_prefix}/include",
+        f"-L{omp_prefix}/lib",
+        "-lomp",
+        cpp_file, "-o", exec_file
+    ]
+
 def compile_code(cpp_file, exec_file):
     print(f"[*] Compiling {cpp_file}...")
-    compile_cmd = ["g++-12", "-O3", "-std=c++17", "-fopenmp", "-pthread", cpp_file, "-o", exec_file]
+    if platform.system() == "Darwin" and platform.machine() == "arm64":
+        compile_cmd = get_m3_compile_cmd(cpp_file, exec_file)
+    else:
+        compile_cmd = ["g++", "-O3", "-std=c++17", "-fopenmp", "-pthread", cpp_file, "-o", exec_file]
     try:
         subprocess.run(compile_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("[+] Compilation successful!\n")
