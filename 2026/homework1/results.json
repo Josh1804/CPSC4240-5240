@@ -1,0 +1,44 @@
+[
+    {
+        "size": 10,
+        "time_c": 0.055834,
+        "time_f": 0.00226457,
+        "status": "OK"
+    },
+    {
+        "size": 50,
+        "time_c": 0.0355795,
+        "time_f": 0.0150911,
+        "status": "OK"
+    },
+    {
+        "size": 100,
+        "time_c": 0.0641747,
+        "time_f": 0.0348891,
+        "status": "OK"
+    },
+    {
+        "size": 150,
+        "time_c": 0.043262,
+        "time_f": 0.0470646,
+        "status": "Perf Only"
+    },
+    {
+        "size": 500,
+        "time_c": 0.0903832,
+        "time_f": 0.0544995,
+        "status": "Perf Only"
+    },
+    {
+        "size": 1000,
+        "time_c": 0.270183,
+        "time_f": 0.439001,
+        "status": "Perf Only"
+    },
+    {
+        "size": 4000,
+        "time_c": 7.13528,
+        "time_f": 16.9088,
+        "status": "Perf Only"
+    }
+]
