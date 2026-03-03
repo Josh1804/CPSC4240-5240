@@ -16,7 +16,7 @@ NUM_ATTEMPTS=5
 
 def compile_code(cpp_file, exec_file):
     print(f"[*] Compiling {cpp_file}...")
-    compile_cmd = ["g++", "-O3", "-std=c++17", "-fopenmp", "-pthread", cpp_file, "-o", exec_file]
+    compile_cmd = ["g++", "-g", "-O3", "-std=c++17", "-fopenmp", "-pthread", cpp_file, "-o", exec_file]
     try:
         subprocess.run(compile_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print("[+] Compilation successful!\n")
