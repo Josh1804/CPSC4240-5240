@@ -51,18 +51,93 @@ inline bool operator<(const DistIndex &a, const DistIndex &b) {
 }
 
 // TODO: Implement a function to build the kd-tree
-KDNode* build_kd_tree(
-    parlay::slice<int*, int*> indices,
-    const parlay::sequence<Point2D>& points,
-    int depth = 0
-) {
+// NEED TO MAKE DESTROYER FOR TREE
+// Takes sequence of just the side, the indices slice keeps track of index in main sequence 
+KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Point2D>& points, int depth = 0) {
   // 1) Base cases: if 0 or 1 points, create a leaf node or return
   // 2) Determine axis = (depth % 2)
-  // 3) Sort indices by that axis (x or y)
+  int axis = depth % 2;
+  if (indices.size() == 0) {
+    return nullptr;
+  }
+  else if (indices.size() == 1) {
+    KDNode* leaf = (KDNode*)malloc(sizeof(KDNode));
+    leaf->axis = axis;
+    if (axis == 0){
+      leaf->splitValue = points[indices[0]].x;
+    } 
+    else {
+      leaf->splitValue = points[indices[0]].y;
+    }
+    leaf->pointIndex = indices[0];
+    leaf->left = nullptr;
+    leaf->right = nullptr;
+    return leaf;
+  }
+  // after this size of indices is 2 or more
+  KDNode* root = (KDNode*)malloc(sizeof(KDNode));
+  root->axis = axis;
   // 4) Find median index
+  // since points contains only the values I can sort that first
+  // auto sorted_pts = parlay::sort(points, [&](auto &a, auto &b){
+  //   if (axis == 0){
+  //     return a.x < b.x;
+  //   }
+  //   else {
+  //     return a.y < b.y;
+  //   }
+  // });
+  auto medInd = parlay::kth_smallest(points, indices.size()/2 + 1);
+  // int medInd = indices.size()/2;
+  root->pointIndex = medInd;
+  if (axis == 0){
+    root->splitValue = points[medInd].x;
+  }
+  else {
+    root->splitValue = points[medInd].y;
+  }
+  
+  // 3) Sort indices by that axis (x or y)
+  // Instead of sorting the indices I'll just go through each element and add them to an array 
+  // depending on if they're greater than or less than the median element 
+  // Should do this at the same time instead of sorting at the beginning 
+  if (indices.size() == 2){
+    // need to check this case 
+  }
+
+  parlay::sequence<Point2D> left(indices.size()/2);
+  parlay::sequence<int> left_ind(indices.size()/2);
+  parlay::sequence<Point2D> right(indices.size() - indices.size()/2 - 1);
+  parlay::sequence<int> right_ind(indices.size() - indices.size()/2 - 1);
+  // indices must be in same order of values so hard to parallelize 
+  for (int i = 0; i < indices.size(); i++){
+    if (axis == 0){
+      if (points[indices[i]].x < root->splitValue){
+        left.push_back(points[indices[i]]);
+        left_ind.push_back(indices[i]);
+      } 
+      else {
+        right.push_back(points[indices[i]]);
+        right_ind.push_back(indices[i]);
+      }
+    }
+  }
+  // parlay::parallel_for(0, indices.size(), [&](size_t i){
+  //   if (axis == 0){
+  //     if (points[indices[i]].x < root->splitValue){
+  //       left.append()
+  //     } 
+  //   }
+  // })
+
   // 5) Create a node with that pivot
   // 6) Recurse left and right in parallel
-  return nullptr; // placeholder
+  parlay::par_do(
+    [&]() {root->left = build_kd_tree(left_ind, left, depth + 1);}, 
+    [&]() {root->right = build_kd_tree(right_ind, right, depth + 1);}, 
+    false
+  );
+  return root; 
 }
 
 // KNN Helper: holds a local max-heap of size k
@@ -115,7 +190,7 @@ knn_search_all(const KDNode* root,
     KNNHelper helper(data_points, k);
     helper.search(root, query_points[i]);
     results[i] = helper.get_results();
-  });
+  }, 0, false);
 
   return results;
 }
@@ -141,8 +216,8 @@ int main(int argc, char** argv) {
   int N = (int)data_points.size();
 
   parlay::sequence<int> indices(N);
-  parlay::parallel_for(0, N, [&](int i){ indices[i] = i; });
-  KDNode* root = build_kd_tree(indices.cut(0, N), data_points, 0);
+  parlay::parallel_for(0, N, [&](int i){ indices[i] = i; }, 0, false);
+  KDNode* root = build_kd_tree(indices, data_points, 0);
 
   auto query_points = load_points_from_file(query_file);
   int Q = (int)query_points.size();
