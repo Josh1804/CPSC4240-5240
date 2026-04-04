@@ -53,14 +53,9 @@ struct DistIndex {
   DistIndex(double d=0, int i=0) : dist(d), index(i) {}
 };
 
-// For a max-heap, we want to put the largest distance on top
-// inline bool operator<(const DistIndex &a, const DistIndex &b) {
-//   return a.dist < b.dist;
-// }
-
 // TODO: Implement a function to build the kd-tree
-// NEED TO MAKE DESTROYER FOR TREE
-// Takes sequence of just the side, the indices slice keeps track of index in main sequence 
+// NEED TO MAKE DESTROYER FOR TREE (jk maybe not???) 
+// Takes sequence of just the side, the indices slice keeps track of index in main sequence, will transfer entire sequence every time
 KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Point2D>& points, int depth = 0) {
   // 1) Base cases: if 0 or 1 points, create a leaf node or return
   // 2) Determine axis = (depth % 2)
@@ -86,15 +81,6 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
   KDNode* root = (KDNode*)malloc(sizeof(KDNode));
   root->axis = axis;
   // 4) Find median index
-  // since points contains only the values I can sort that first
-  // auto sorted_pts = parlay::sort(points, [&](auto &a, auto &b){
-  //   if (axis == 0){
-  //     return a.x < b.x;
-  //   }
-  //   else {
-  //     return a.y < b.y;
-  //   }
-  // });
   auto medInd = parlay::kth_smallest(indices, indices.size()/2, [&](auto &a, auto &b){
     if (axis == 0){
       return points[a].x < points[b].x;
@@ -102,7 +88,6 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
     else {
       return points[a].y < points[b].y;
     }});
-  // std::cout << "medInd: " << *medInd << std::endl;
   root->pointIndex = *medInd;
   if (axis == 0){
     root->splitValue = points[*medInd].x;
@@ -110,25 +95,11 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
   else {
     root->splitValue = points[*medInd].y;
   }
-  // std::cout << "splitvalue: " << root->splitValue << std::endl;
   
   // 3) Sort indices by that axis (x or y)
   // Instead of sorting the indices I'll just go through each element and add them to an array 
   // depending on if they're greater than or less than the median element 
-  // Should do this at the same time instead of sorting at the beginning 
-  // if (indices.size() == 2){
-  //   root->right = nullptr;
-
-  //   // parlay::sequence<Point2D> left;
-  //   parlay::sequence<int> left_ind;
-  //   left_ind.push_back(indices[0]);
-  //   // left.push_back(points[0]);
-  //   root->left = build_kd_tree(left_ind, points, depth + 1);
-  //   return root;
-  // }
-  // parlay::sequence<Point2D> left;
   parlay::sequence<int> left_ind;
-  // parlay::sequence<Point2D> right;
   parlay::sequence<int> right_ind;
   // indices must be in same order of values so hard to parallelize 
   for (int i = 0; i < indices.size(); i++){
@@ -138,21 +109,17 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
     }
     if (axis == 0){
       if (points[indices[i]].x < root->splitValue){
-        // left.push_back(points[indices[i]]);
         left_ind.push_back(indices[i]);
       } 
       else {
-        // right.push_back(points[indices[i]]);
         right_ind.push_back(indices[i]);
       }
     }
     else {
       if (points[indices[i]].y < root->splitValue){
-        // left.push_back(points[indices[i]]);
         left_ind.push_back(indices[i]);
       } 
       else {
-        // right.push_back(points[indices[i]]);
         right_ind.push_back(indices[i]);
       }
     }
@@ -160,31 +127,11 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
 
   // 5) Create a node with that pivot
   // 6) Recurse left and right in parallel
-  // std::cout << "Depth: " << depth << std::endl;
-  // for (int i = 0; i < indices.size(); i++){
-  //   std::cout << "points[" << i << "]: (" << points[i].x << ", " << points[i].y << ")" << std::endl;
-  // }
-  // std::cout << "size of left: " << left_ind.size() << std::endl;
-  // std::cout << "size of right: " << right_ind.size() << std::endl;
   parlay::par_do(
     [&]() {root->left = build_kd_tree(left_ind, points, depth + 1);}, 
     [&]() {root->right = build_kd_tree(right_ind, points, depth + 1);}, 
     false
   );
-  // std::cout << "Depth: " << depth << std::endl;
-  // std::cout << "id: : " << root->pointIndex << std::endl;
-  // if (root->left == nullptr){
-  //   std::cout << "left: : empty" << std::endl;
-  // }
-  // else {
-  //   std::cout << "left: : " << root->left->pointIndex << std::endl;
-  // }
-  // if (root->right == nullptr){
-  //   std::cout << "right : empty" << std::endl;
-  // }
-  // else {
-  //   std::cout << "right: : " << root->right->pointIndex << std::endl;
-  // }
   return root; 
 }
 
@@ -198,7 +145,6 @@ public:
 
   // Perform recursive search
   void search(const KDNode* node, const Point2D& q) {
-    // std::cout << "Search called" << std::endl;
     // TODO:
     // 1) compute dist2 from q to node->pointIndex
     if (node == nullptr){
@@ -212,20 +158,14 @@ public:
     if (node->axis == 0){
       if (q.x < node->splitValue){
         search(node->left, q);
-        if (best.size() >= k){
-          double dx = q.x - node->splitValue;
-          if (dx * dx < best[0].dist){
-            search(node->right, q);
-          }
+        if (q.x - node->splitValue < points[best[0].index].x){
+          search(node->right, q);
         }
       }
       else {
         search(node->right, q);
-        if (best.size() >= k){
-          double dx = q.x - node->splitValue;
-          if (dx * dx < best[0].dist){
-            search(node->left, q);
-          }
+        if (node->splitValue - q.x < points[best[0].index].x){
+          search(node->left, q);
         }
       }
     }
@@ -233,20 +173,14 @@ public:
     {
       if (q.y < node->splitValue){
         search(node->left, q);
-        if (best.size() >= k){
-          double dy = q.y - node->splitValue;
-          if (dy * dy < best[0].dist){
-            search(node->right, q);
-          }
+        if (q.y - node->splitValue < points[best[0].index].y){
+          search(node->right, q);
         }
       }
       else {
         search(node->right, q);
-        if (best.size() >= k){
-          double dy = q.y - node->splitValue;
-          if (dy * dy < best[0].dist){
-            search(node->left, q);
-          }
+        if (node->splitValue - q.y < points[best[0].index].y){
+          search(node->left, q);
         }
       }
     }
@@ -277,24 +211,21 @@ private:
     else {
       if (dist2 < best[0].dist){
         best[0] = elem;
-        int index = 0;
         int root = 0;
-        // compare with parent and swap 
-        while (index < best.size()) {
+        // Sift down: compare with children and swap with larger child
+        while (true) {
+          int largest = root;
           // check left child 
-          int new_ind;
-          if (index*2 + 1 < best.size() && best[index*2 + 1].dist > best[index].dist){
-            // change index to follow 
-            index = index*2 + 1;
+          if (root*2 + 1 < best.size() && best[root*2 + 1].dist > best[largest].dist){
+            largest = root*2 + 1;
           }
           // check right child 
-          else if (index*2 + 2 < best.size() && best[index*2 + 2].dist > best[index].dist){
-            // change index to follow 
-            index = index*2 + 2;
+          if (root*2 + 2 < best.size() && best[root*2 + 2].dist > best[largest].dist){
+            largest = root*2 + 2;
           }
-          if (index != root){
-            std::swap(best[root], best[index]);
-            root = index;
+          if (largest != root){
+            std::swap(best[root], best[largest]);
+            root = largest;
           }
           else {
             break;
@@ -302,10 +233,6 @@ private:
         }
       }
     }
-    // std::cout << "elem.dist: " << elem.dist << std::endl;
-    // for (int i = 0; i < best.size(); i++){
-    //   std::cout << "best[" << i << "]: " << best[i].dist << std::endl;
-    // }
   }
 
   void insert(DistIndex elem){
@@ -349,8 +276,6 @@ parlay::sequence<Point2D> load_points_from_file(const std::string &filename) {
     getline(file, buffer);
     int count = std::stoi(buffer);
     parlay::sequence<Point2D> points;
-    // double x; 
-    // double y;
     Point2D temp = Point2D();
     for (int i = 0; i < count; i++){
       file >> buffer; 
@@ -358,11 +283,7 @@ parlay::sequence<Point2D> load_points_from_file(const std::string &filename) {
       file >> buffer; 
       temp.y = std::stod(buffer);
       points.push_back(temp);
-      // std::cout << "temp[" << i << "]: (" << temp.x << ", " << temp.y << ")" << std::endl;
     }
-    // for (int i = 0; i < count; i++){
-    //   std::cout << "points[" << i << "]: (" << points[i].x << ", " << points[i].y << ")" << std::endl;
-    // }
     return points;
   }
   else {
@@ -374,8 +295,6 @@ parlay::sequence<Point2D> load_points_from_file(const std::string &filename) {
 }
 
 int main(int argc, char** argv) {
-  setenv("OMP_NUM_THREADS", "1", 1);
-  setenv("PARLAY_NUM_THREADS", "1", 1);
   if (argc < 4) {
     std::cerr << "Usage: " << argv[0]
               << " <data_file> <query_file> <k>\n";
@@ -399,15 +318,12 @@ int main(int argc, char** argv) {
   auto results = knn_search_all(root, data_points, query_points, k);
 
   for (int q = 0; q < Q; q++) {
-    std::cout << "Query " << q << ": ("
-              << query_points[q].x << ", "
-              << query_points[q].y << ")\n";
-    std::cout << "  kNN: ";
+    printf("Query %d: (%.2f, %.2f)\n", q, query_points[q].x, query_points[q].y);
+    printf("  kNN: ");
     for (auto &di : results[q]) {
-      std::cout << "(dist2=" << di.dist
-                << ", idx=" << di.index << ") ";
+      printf("(dist2=%.2f, idx=%d) ", di.dist, di.index);
     }
-    std::cout << "\n";
+    printf("\n");
   }
 
   return 0;
