@@ -116,22 +116,26 @@ KDNode* build_kd_tree(parlay::sequence<int> indices, const parlay::sequence<Poin
   // Instead of sorting the indices I'll just go through each element and add them to an array 
   // depending on if they're greater than or less than the median element 
   // Should do this at the same time instead of sorting at the beginning 
-  if (indices.size() == 2){
-    root->right = nullptr;
+  // if (indices.size() == 2){
+  //   root->right = nullptr;
 
-    // parlay::sequence<Point2D> left;
-    parlay::sequence<int> left_ind;
-    left_ind.push_back(indices[0]);
-    // left.push_back(points[0]);
-    root->left = build_kd_tree(left_ind, points, depth + 1);
-    return root;
-  }
+  //   // parlay::sequence<Point2D> left;
+  //   parlay::sequence<int> left_ind;
+  //   left_ind.push_back(indices[0]);
+  //   // left.push_back(points[0]);
+  //   root->left = build_kd_tree(left_ind, points, depth + 1);
+  //   return root;
+  // }
   // parlay::sequence<Point2D> left;
   parlay::sequence<int> left_ind;
   // parlay::sequence<Point2D> right;
   parlay::sequence<int> right_ind;
   // indices must be in same order of values so hard to parallelize 
   for (int i = 0; i < indices.size(); i++){
+    // Skip the median element itself; it is stored as root->pointIndex
+    if (indices[i] == *medInd) {
+      continue;
+    }
     if (axis == 0){
       if (points[indices[i]].x < root->splitValue){
         // left.push_back(points[indices[i]]);
@@ -208,14 +212,20 @@ public:
     if (node->axis == 0){
       if (q.x < node->splitValue){
         search(node->left, q);
-        if (best.size() >= k && std::fabs(q.x - node->splitValue) < best[0].dist){
-          search(node->right, q);
+        if (best.size() >= k){
+          double dx = q.x - node->splitValue;
+          if (dx * dx < best[0].dist){
+            search(node->right, q);
+          }
         }
       }
       else {
         search(node->right, q);
-        if (best.size() >= k && std::fabs(node->splitValue - q.x) < best[0].dist){
-          search(node->left, q);
+        if (best.size() >= k){
+          double dx = q.x - node->splitValue;
+          if (dx * dx < best[0].dist){
+            search(node->left, q);
+          }
         }
       }
     }
@@ -223,14 +233,20 @@ public:
     {
       if (q.y < node->splitValue){
         search(node->left, q);
-        if (best.size() >= k && std::fabs(q.y - node->splitValue) < best[0].dist){
-          search(node->right, q);
+        if (best.size() >= k){
+          double dy = q.y - node->splitValue;
+          if (dy * dy < best[0].dist){
+            search(node->right, q);
+          }
         }
       }
       else {
         search(node->right, q);
-        if (best.size() >= k && std::fabs(node->splitValue - q.y) < best[0].dist){
-          search(node->left, q);
+        if (best.size() >= k){
+          double dy = q.y - node->splitValue;
+          if (dy * dy < best[0].dist){
+            search(node->left, q);
+          }
         }
       }
     }
@@ -383,7 +399,7 @@ int main(int argc, char** argv) {
   auto results = knn_search_all(root, data_points, query_points, k);
 
   for (int q = 0; q < Q; q++) {
-    std::cout << "Query " << q << " : ("
+    std::cout << "Query " << q << ": ("
               << query_points[q].x << ", "
               << query_points[q].y << ")\n";
     std::cout << "  kNN: ";

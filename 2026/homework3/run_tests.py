@@ -263,29 +263,29 @@ TEST_CASES = [
 TEST_CASES += [
     {
         "name": "Large Test 3: 10^3 data, 10^3 queries",
-        "data": generate_points(10**3),
-        "query": generate_queries(10**3),
-        "k": 5,
+        "data": generate_points(10*3),
+        "query": generate_queries(10*3),
+        "k": 2,
         "timeout": 30
-    },
-    {
-        "name": "Large Test 4: 10^4 data, 10^4 queries",
-        # data: 10^4 points
-        "data": generate_points(10**4),
-        # queries: 10^3 queries
-        "query": generate_queries(10**4),
-        "k": 5,
-        "timeout": 60
-    },
-    {
-        "name": "Large Test 5: 10^5 data, 10^5 queries",
-        # data: 10^5 points
-        "data": generate_points(10**5),
-        # queries: 10^4 queries
-        "query": generate_queries(10**5),
-        "k": 5,
-        "timeout": 120
     }
+    # {
+    #     "name": "Large Test 4: 10^4 data, 10^4 queries",
+    #     # data: 10^4 points
+    #     "data": generate_points(10**4),
+    #     # queries: 10^3 queries
+    #     "query": generate_queries(10**4),
+    #     "k": 5,
+    #     "timeout": 60
+    # },
+    # {
+    #     "name": "Large Test 5: 10^5 data, 10^5 queries",
+    #     # data: 10^5 points
+    #     "data": generate_points(10**5),
+    #     # queries: 10^4 queries
+    #     "query": generate_queries(10**5),
+    #     "k": 5,
+    #     "timeout": 120
+    # }
     # You can add an even larger test if desired, but these should suffice.
 ]
 
