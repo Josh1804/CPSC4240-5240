@@ -203,6 +203,15 @@ TEST_CASES.append({"name": "Test 13: Random Graph (5000V, ~50000E)", "nv": n, "e
 n, e = generate_random_graph(10000, 50000, seed=404)
 TEST_CASES.append({"name": "Test 14: Large Random Graph (10000V, ~100000E)", "nv": n, "edges": e, "timeout": 300})
 
+n, e = generate_random_graph(100000, 1000000, seed=101)
+TEST_CASES.append({"name": "Test 15: XL Random Graph (100000V, ~1000000E)", "nv": n, "edges": e, "timeout": 600})
+
+n, e = generate_random_graph(1000000, 10000000, seed=202)
+TEST_CASES.append({"name": "Test 16: XXL Random Graph (1000000V, ~10000000E)", "nv": n, "edges": e, "timeout": 1200})
+
+n, e = generate_random_graph(10000000, 100000000, seed=303)
+TEST_CASES.append({"name": "Test 17: XXXL Random Graph (10000000V, ~100000000E)", "nv": n, "edges": e, "timeout": 3600})
+
 
 ###############################################################################
 # Main Test Runner
