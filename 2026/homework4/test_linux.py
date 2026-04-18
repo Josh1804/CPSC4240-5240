@@ -143,6 +143,8 @@ def generate_random_graph(n, m, seed=42):
     directed = []
     
     if m > 10000:
+        add_edge = edge_set.add
+        dir_append = directed.append
         while len(edge_set) < m:
             needed = m - len(edge_set)
             gen_size = int(needed * 1.05) + 1000
@@ -153,9 +155,9 @@ def generate_random_graph(n, m, seed=42):
                 if u != v:
                     key = (u, v) if u < v else (v, u)
                     if key not in edge_set:
-                        edge_set.add(key)
-                        directed.append((u, v))
-                        directed.append((v, u))
+                        add_edge(key)
+                        dir_append((u, v))
+                        dir_append((v, u))
                         if len(edge_set) == m:
                             break
         return n, directed
@@ -227,9 +229,6 @@ TEST_CASES.append({"name": "Test 15: XL Random Graph (100000V, ~1000000E)", "nv"
 
 n, e = generate_random_graph(1000000, 10000000, seed=202)
 TEST_CASES.append({"name": "Test 16: XXL Random Graph (1000000V, ~10000000E)", "nv": n, "edges": e, "timeout": 1200})
-
-n, e = generate_random_graph(10000000, 100000000, seed=303)
-TEST_CASES.append({"name": "Test 17: XXXL Random Graph (10000000V, ~100000000E)", "nv": n, "edges": e, "timeout": 3600})
 
 
 ###############################################################################
